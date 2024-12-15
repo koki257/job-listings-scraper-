@@ -1,0 +1,65 @@
+rom apify_client import ApifyClient
+import csv
+
+# Initialize the ApifyClient with your API token
+client = ApifyClient("apify_api_l4MrxgW0TuzsFeAxY9ZeA2G2d3C0pI3eAtkF")
+
+# Function to fetch data from an Actor and return results as a list
+def fetch_actor_data(actor_id, run_input):
+    # Run the Actor and wait for it to finish        
+    run = client.actor(actor_id).call(run_input=run_input)
+    
+    # Fetch results from the run's dataset
+    return list(client.dataset(run["defaultDatasetId"]).iterate_items())
+
+# First Actor: Fetch data for specific companies
+run_input_1 = {
+    "title": "",
+    "location": "United States",
+    "companyName": ["Google", "Microsoft"],
+    "companyId": ["76987811", "1815218"],
+    "publishedAt": "",
+    "rows": 50,
+    "proxy": {
+        "useApifyProxy": True,
+        "apifyProxyGroups": ["RESIDENTIAL"],
+    },
+}
+results_1 = fetch_actor_data("BHzefUZlZRKWxkTck", run_input_1)
+
+# Second Actor: Fetch data for specific job postings
+_2 = {
+    "position": "web developer",
+    "country": "US",
+    "location": "San Francisco",
+    "maxItems": 50,
+    "parseCompanyDetails": False,
+    "saveOnlyUniqueItems": True,
+    "followApplyRedirects": False,
+}
+results_2 = fetch_actor_data("hMvNSpz3JnHgl5jkh", run_input_2)
+
+# Combine results from both Actors
+combined_results = results_1 + results_2
+
+# Ensure consistent fieldnames for all rows
+# Get a unique set of all keys across all result items
+fieldnames = set()
+for result in combined_results:
+    fieldnames.update(result.keys())
+fieldnames = list(fieldnames)  # Convert to a list
+
+# Save combined results to a CSV file
+output_file = "combined_results.csv"
+with open(output_file, mode="w", newline="", encoding="utf-8") as csv_file:
+    # Create a CSV writer object
+    writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+    
+    # Write the header
+    writer.writeheader()
+    
+    # Write the data
+    for item in combined_results:
+        # Fill missing fields with an empty string
+        row = {field: item.get(field, "") for field in fieldnames}
+        writer.writerow(row)
